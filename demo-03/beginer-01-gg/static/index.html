@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Chat</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 24px auto; }
+    .chat { border: 1px solid #ddd; border-radius: 12px; padding: 16px; min-height: 320px; }
+    .msg { margin: 8px 0; white-space: pre-wrap; }
+    .me { color: #0a7; } .bot { color: #06c; } .err { color: #b00; }
+    form { display: flex; gap: 8px; margin-top: 12px; }
+    input[type=text] { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc; }
+    button { padding: 10px 16px; border: 0; border-radius: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Simple Chat</h1>
+  <div class="chat" id="chat"></div>
+  <form id="form">
+    <input id="input" type="text" placeholder="Nhập tin nhắn..." autocomplete="off" />
+    <button type="submit">Gửi</button>
+  </form>
+
+  <script>
+    const API = "http://127.0.0.1:5001"; // giữ 127.0.0.1 cho cả FE & BE
+    const chat = document.getElementById('chat');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+
+    function append(role, text, cls='') {
+      const div = document.createElement('div');
+      div.className = 'msg ' + (cls || (role === 'user' ? 'me' : 'bot'));
+      div.textContent = (role === 'user' ? 'Bạn: ' : 'Trợ lý: ') + text;
+      chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+      append('user', message);
+      input.value = '';
+      try {
+        // không gửi credentials; để mặc định CORS
+        const res = await fetch(`${API}/chat`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        console.log(data);
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        append('assistant', data.reply);
+      } catch (err) {
+        append('assistant', `⚠️ ${err.message}`, 'err');
+      }
+    });
+
+    // test nhanh backend
+    fetch(`${API}/ping`, { headers: { 'Origin': location.origin } })
+      .then(r => r.json()).then(() => append('assistant', '✅ Backend sẵn sàng.'))
+      .catch(() => append('assistant', '⚠️ Không kết nối được backend.', 'err'));
+  </script>
+</body>
+</html>
